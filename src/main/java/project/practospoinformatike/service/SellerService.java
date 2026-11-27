@@ -13,6 +13,7 @@ import project.practospoinformatike.dao.SellerRepository;
 import project.practospoinformatike.dto.Account;
 import project.practospoinformatike.dto.SignIn;
 import project.practospoinformatike.dto.SignUp;
+import project.practospoinformatike.entity.Buyer;
 import project.practospoinformatike.entity.Seller;
 import project.practospoinformatike.entity.UserDetails;
 
@@ -81,6 +82,8 @@ public class SellerService {
     public void getDataCreate() {
         Scanner scanner = new Scanner(System.in);
         SignUp dto;
+        String password, name;
+        int age;
         while (true) {
             try {
                 System.out.println("Введите данные: ");
@@ -88,28 +91,29 @@ public class SellerService {
                 String email = scanner.nextLine();
                 if(!isEmailAlreadyExists(email)){
                     System.out.print("\t\tПароль: ");
-                    String password = scanner.nextLine();
-                    if(password.length()>5) {
-                        System.out.print("\t\tИмя: ");
-                        String name = scanner.nextLine();
-                        if(name.length()>1 && name.length()<50){
-                            System.out.print("\t\tВозраст: ");
-                            int age = scanner.nextInt();
-                            if(age>13){
-                                dto = new SignUp(email, password, name, age);
-                                createSeller(dto);
-                                break;
-                            }else{
-                                throw new RuntimeException("вы младше 14 лет");
-                            }
-                        }else{
-                            throw new RuntimeException("ваше имя должно быть от 2 до 50 символов");
-                        }
-                    }else{
-                        throw new RuntimeException("слишком короткий пароль");
-                    }
+                    password = scanner.nextLine();
                 }else{
                     throw new RuntimeException("такой аккаунт уже существует или введена некорректная почта");
+                }
+                if(password.length()>5) {
+                    System.out.print("\t\tИмя: ");
+                    name = scanner.nextLine();
+
+                }else{
+                    throw new RuntimeException("слишком короткий пароль");
+                }
+                if(name.length()>1 && name.length()<50){
+                    System.out.print("\t\tВозраст: ");
+                    age = scanner.nextInt();
+                }else{
+                    throw new RuntimeException("ваше имя должно быть от 2 до 50 символов");
+                }
+                if(age>13){
+                    dto = new SignUp(email, password, name, age);
+                    createSeller(dto);
+                    break;
+                }else{
+                    throw new RuntimeException("вы младше 14 лет");
                 }
             } catch (Exception e) {
                 System.out.println(e+"\nВведите данные снова\n");
@@ -168,5 +172,89 @@ public class SellerService {
         seller.setDetails(userDetails);
         sellerRepository.save(seller);
         account = new Account(dto.getEmail(), dto.getPassword(), dto.getName(), dto.getAge());
+    }
+    //меню пользователя
+    @Transactional
+    public void buyerMenu(){
+        Scanner scanner = new Scanner(System.in);
+        while(true) {
+            String option = "";
+            try {
+                System.out.println("Выберите опцию: " +
+                        "\n\t\t 1. Редактировать профиль." +
+                        "\n\t\t 2. Список ваших товаров." +
+                        "\n\t\t 3. Завершить программу." +
+                        "\n\t\t 4. Удалить  аккаунт.");
+                option = scanner.nextLine();
+                switch (option) {
+                    case "1": getDataToChangeProfile(); break;
+                    case "2": break;
+                    case "3": throw new RuntimeException("Программа завершена");
+                    case "4": deleteAccount(account.getEmail()); throw new RuntimeException("Аккаунт удален");
+                    default: throw new RuntimeException("Некорректный вариант");
+                }
+            } catch (Exception e) {
+                System.out.println("\n__________________________________________________________\n");
+                if(option.equals("3") | option.equals("4")) {
+                    break;
+                }
+            }
+        }
+    }
+    //удалить аккаунт
+    @Transactional
+    public void deleteAccount(String email){
+        sellerRepository.deleteByEmail(email);
+
+    }
+    //получить данные для смены данных профиля
+    public void getDataToChangeProfile(){
+        Scanner scanner = new Scanner(System.in);
+        SignUp dto;
+        String email ,name;
+        int age;
+        while (true) {
+            try {
+                System.out.println("Введите новые данные: ");
+                System.out.print("\t\tПочта: ");
+                email = scanner.nextLine();
+                if(!isEmailAlreadyExists(email)){
+                    System.out.print("\t\tИмя: ");
+                    name = scanner.nextLine();
+                }else{
+                    throw new RuntimeException("такой аккаунт уже существует или введена некорректная почта");
+                }
+                if(name.length()>1 && name.length()<50){
+                    System.out.print("\t\tВозраст: ");
+                    age = scanner.nextInt();
+                }else{
+                    throw new RuntimeException("ваше имя должно быть от 2 до 50 символов");
+                }
+                if(age>13){
+                    if(changeBuyerData(name, email, age)){
+                        account.setAge(age);
+                        account.setEmail(email);
+                        account.setName(name);
+                    }
+                    buyerMenu();
+                    break;
+                }else{
+                    throw new RuntimeException("вы младше 14 лет");
+                }
+            } catch (Exception e) {
+                System.out.println(e+"\nВведите данные снова\n");
+            }
+        }
+    }
+    @Transactional
+    public boolean changeBuyerData(String name, String email, int age){
+        Seller seller = entityManager.createQuery("SELECT s FROM Seller s WHERE s.email=:email", Seller.class)
+                .setParameter("email", account.getEmail())
+                .getSingleResult();
+        seller.setEmail(email);
+        seller.getDetails().setName(name);
+        seller.getDetails().setAge(age);
+        sellerRepository.save(seller);
+        return true;
     }
 }
